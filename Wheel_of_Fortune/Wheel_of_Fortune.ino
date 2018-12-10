@@ -68,10 +68,10 @@ void setup() {
   pinMode(buttonPin, INPUT);
   pinMode(tiltPin, INPUT);
   makeWheel();
-//  printWheel(); for debugging
-  Serial.println("Welcome to the Wheel of Fourtune!");
-  Serial.println("Enter in phrase");
   lcd.begin(16, 2);
+//  printWheel(); for debugging
+  lcdDisplay("Welcome to the Wheel of Fourtune");
+  lcdDisplay("Enter in phrase");
 }
 
 void loop() {  
@@ -81,13 +81,13 @@ void loop() {
 //  Serial.println(divFactor); for debugging
   if (gameState == 0) {
     inputWord();
-    Serial.println(phrase);
+    lcdDisplay(phrase);
     createUpdatedPhrase();
     gameState = 1;
     p1.state = 0;
-    Serial.println("Player 1's turn");
-    Serial.println("The state of the word:");
-    Serial.println(updatedPhrase);
+    lcdDisplay("Player 1's turn");
+    lcdDisplay("The state of the word:");
+    lcdDisplay(updatedPhrase);
     delay(2000);  // so that button state read is not tangled together
   } else if (gameState == 1) {
     // player 1's turn
@@ -103,15 +103,23 @@ void loop() {
       }
     } else if (p1.state == 1) { // Scrolls through the array
       p1.guessValue = scrollArray();
-      Serial.println("Player 1 guess a letter");
+      lcdDisplay(p1.guessValue);
+      Serial.write(p1.guessValue);  // sending data to slave
+      Serial.write(spinStrength);   // sending data to slave
+      lcdDisplay("Player 1 guess a letter");
       p1.state = 2;
     } else if (p1.state == 2) { // Player enters a guess
       char temp = pickCharacter();
       delay(100);  // please don't remove, otherwise the cursor on lcd updates too fast and is not going to show
       if (temp != NULL) {
         p1.guess = temp;
-        Serial.print("You guessed: ");
-        Serial.println(p1.guess);
+        lcdDisplay("You guessed:    ");
+        lcdDisplay(String((char)p1.guess));
+        Serial.write(1);           // sending data to slave
+        Serial.write(p1.score);    // sending data to slave
+        char* cString = (char*) malloc(sizeof(char)*(phrase.length() + 1));
+        phrase.toCharArray(cString, phrase.length() + 1);
+        Serial.write(cString);    // sending data to slave
 //        Serial.print("available = ");
 //        Serial.println(Serial.available());      
         spinNum = 0;
@@ -120,18 +128,18 @@ void loop() {
     } else if (p1.state == 3) { // Checks the guess and updates the word and score
       int correct = checkGuess(p1.guess);
       p1.score += (correct * p1.guessValue);
-      Serial.print("Player 1's score is: ");
-      Serial.println(p1.score);
+      lcdDisplay("Player 1's score is: ");
+      lcdDisplay(p1.score);
       p1.state = 4;
     } else if (p1.state == 4) { // Checks the game state and moves to player 2's turn or the game is over
       updateGuess(p1.guess);
-      Serial.println("The state of the word:");
-      Serial.println(updatedPhrase);
+      lcdDisplay("The state of the word:");
+      lcdDisplay(updatedPhrase);
       bool game = gameOver();
       if (game) {
         gameState = 3;
       } else {
-        Serial.println("Player 2's turn");
+        lcdDisplay("Player 2's turn");
         spinStrength = 0;
         gameState = 2;
         p2.state = 0;
@@ -151,15 +159,22 @@ void loop() {
       }
     } else if (p2.state == 1) {
       p2.guessValue = scrollArray();
-      Serial.println("Player 2 guess a letter");
+      Serial.write(p2.guessValue);  // sending data to slave
+      Serial.write(spinStrength);   // sending data to slave
+      lcdDisplay("Player 2 guess a letter");
       p2.state = 2;
     } else if (p2.state == 2) {
       char temp = pickCharacter();
       delay(100);  // please don't remove, otherwise the cursor on lcd updates too fast and is not going to show
       if (temp != NULL) {           
         p2.guess = temp;
-        Serial.print("You guessed: ");
-        Serial.println(p2.guess);
+        lcdDisplay("You guessed:    ");
+        lcdDisplay(String((char)p2.guess));
+        Serial.write(2);           // sending data to slave
+        Serial.write(p2.score);    // sending data to slave
+        char* cString = (char*) malloc(sizeof(char)*(phrase.length() + 1));
+        phrase.toCharArray(cString, phrase.length() + 1);
+        Serial.write(cString);    // sending data to slave
 //        Serial.print("available = ");
 //        Serial.println(Serial.available());
         spinNum = 0;
@@ -168,18 +183,18 @@ void loop() {
     } else if (p2.state == 3) {
       int correct = checkGuess(p2.guess);
       p2.score += (correct * p2.guessValue);
-      Serial.print("Player 2's score is: ");
-      Serial.println(p2.score);
+      lcdDisplay("Player 2's score is: ");
+      lcdDisplay(p2.score);
       p2.state = 4;
     } else if (p2.state == 4) {
       updateGuess(p2.guess);
-      Serial.println("The state of the word:");
-      Serial.println(updatedPhrase);
+      lcdDisplay("The state of the word:");
+      lcdDisplay(updatedPhrase);
       bool game = gameOver();
       if (game) {
         gameState = 3;
       } else {
-        Serial.println("Player 1's turn");
+        lcdDisplay("Player 1's turn");
         spinStrength = 0;
         gameState = 1;
         p1.state = 0;
@@ -189,11 +204,13 @@ void loop() {
     // game over
     // declare winner and money won
     // start new game?
-    Serial.println("The game is over");
-    Serial.print("Player 1's final score: ");
-    Serial.println(p1.score);
-    Serial.print("Player 2's final score: ");
-    Serial.println(p2.score);
+    lcdDisplay("The game is over");
+    lcdDisplay("Player 1's final score: ");
+    lcdDisplay(p1.score);
+    lcdDisplay("Player 2's final score: ");
+    lcdDisplay(p2.score);
+    Serial.write(p1.score);    // sending data to slave
+    Serial.write(p2.score);    // sending data to slave
     gameState = 4;
   } else if (gameState == 4) {
     // holding state
@@ -210,7 +227,7 @@ void makeWheel() {
 // Prints the values in the wheel array, used for debugging
 void printWheel() {
   for (int i = 0; i < WHEEL_SIZE; i++) {
-    Serial.println(wheel[i]);
+    lcdDisplay(wheel[i]);
   }
 }
 
@@ -245,7 +262,7 @@ int scrollArray() {
   int i = 0;
   int j = 0;
   while (i < spinNum) {
-    Serial.println(wheel[j]);
+    // Serial.println(wheel[j]);
     i++;
     j++;
     delay(100);
@@ -253,7 +270,7 @@ int scrollArray() {
       j = 0;
     }
   }
-  Serial.println(wheel[j]);
+  lcdDisplay(wheel[j]);
   return wheel[j];
 }
 
@@ -404,4 +421,24 @@ int buttonDoubleClick() {
     return 1;
   }
   return 0;
+}
+
+void lcdDisplay(String input) {
+  lcd.home();
+  if (input.length() <= 16) {
+    lcd.print(input);
+  } else {
+    lcd.print(input.substring(0, 16));
+    lcd.setCursor(0, 1);
+    lcd.print(input.substring(16, input.length()));
+  }
+  delay(2000);
+  lcd.clear();
+}
+
+void lcdDisplay(int input) {
+  lcd.home();
+  lcd.print(input);
+  delay(2000);
+  lcd.clear();
 }
