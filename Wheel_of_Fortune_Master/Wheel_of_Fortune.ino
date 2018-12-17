@@ -1,3 +1,11 @@
+// EE299 Lab 4
+// Feifan Qiao, Mitchell Szeto, Bert Zhao
+// This is the code for the master device. Pushbutton, tilt sensor, rotary potentiometer
+// and a lcd are connected to the device. It prompts users for a word input, and waits for
+// guesses from player 1 and player 2. The strength of the spin and the resistance of the wheel
+// are sent to the slave device as two integers. The game is over when the all of the characters
+// in the word are guessed.
+
 #include <LiquidCrystal.h>
 LiquidCrystal lcd(2, 3, 4, 5, 6, 7, 8);  // bus 1
 
@@ -104,8 +112,8 @@ void loop() {
     } else if (p1.state == 1) { // Scrolls through the array
       p1.guessValue = scrollArray();
       lcdDisplay(p1.guessValue);
-      Serial.write(p1.guessValue);  // sending data to slave
-      Serial.write(spinStrength);   // sending data to slave
+      sendInt(p1.guessValue);  // sending data to slave
+      sendInt(spinStrength);   // sending data to slave
       lcdDisplay("Player 1 guess a letter");
       p1.state = 2;
     } else if (p1.state == 2) { // Player enters a guess
@@ -115,11 +123,6 @@ void loop() {
         p1.guess = temp;
         lcdDisplay("You guessed:    ");
         lcdDisplay(String((char)p1.guess));
-        Serial.write(1);           // sending data to slave
-        Serial.write(p1.score);    // sending data to slave
-        char* cString = (char*) malloc(sizeof(char)*(phrase.length() + 1));
-        phrase.toCharArray(cString, phrase.length() + 1);
-        Serial.write(cString);    // sending data to slave
 //        Serial.print("available = ");
 //        Serial.println(Serial.available());      
         spinNum = 0;
@@ -128,6 +131,9 @@ void loop() {
     } else if (p1.state == 3) { // Checks the guess and updates the word and score
       int correct = checkGuess(p1.guess);
       p1.score += (correct * p1.guessValue);
+      //sendInt(1);           // sending data to slave
+      //sendInt(p1.score);    // sending data to slave
+      //writeString(phrase);   // sending data to slave
       lcdDisplay("Player 1's score is: ");
       lcdDisplay(p1.score);
       p1.state = 4;
@@ -159,30 +165,29 @@ void loop() {
       }
     } else if (p2.state == 1) {
       p2.guessValue = scrollArray();
-      Serial.write(p2.guessValue);  // sending data to slave
-      Serial.write(spinStrength);   // sending data to slave
+      lcdDisplay(p2.guessValue);
+      sendInt(p2.guessValue);  // sending data to slave
+      sendInt(spinStrength);   // sending data to slave
       lcdDisplay("Player 2 guess a letter");
       p2.state = 2;
     } else if (p2.state == 2) {
       char temp = pickCharacter();
       delay(100);  // please don't remove, otherwise the cursor on lcd updates too fast and is not going to show
-      if (temp != NULL) {           
+      if (temp != NULL) {
         p2.guess = temp;
         lcdDisplay("You guessed:    ");
         lcdDisplay(String((char)p2.guess));
-        Serial.write(2);           // sending data to slave
-        Serial.write(p2.score);    // sending data to slave
-        char* cString = (char*) malloc(sizeof(char)*(phrase.length() + 1));
-        phrase.toCharArray(cString, phrase.length() + 1);
-        Serial.write(cString);    // sending data to slave
 //        Serial.print("available = ");
-//        Serial.println(Serial.available());
+//        Serial.println(Serial.available());      
         spinNum = 0;
         p2.state = 3;
       }
     } else if (p2.state == 3) {
       int correct = checkGuess(p2.guess);
       p2.score += (correct * p2.guessValue);
+      //sendInt(1);           // sending data to slave
+      //sendInt(p1.score);    // sending data to slave
+      //writeString(phrase);   // sending data to slave
       lcdDisplay("Player 2's score is: ");
       lcdDisplay(p2.score);
       p2.state = 4;
@@ -209,8 +214,8 @@ void loop() {
     lcdDisplay(p1.score);
     lcdDisplay("Player 2's final score: ");
     lcdDisplay(p2.score);
-    Serial.write(p1.score);    // sending data to slave
-    Serial.write(p2.score);    // sending data to slave
+    //sendInt(p1.score);    // sending data to slave
+    //sendInt(p2.score);    // sending data to slave
     gameState = 4;
   } else if (gameState == 4) {
     // holding state
@@ -422,7 +427,7 @@ int buttonDoubleClick() {
   }
   return 0;
 }
-
+// displays the given string on the display
 void lcdDisplay(String input) {
   lcd.home();
   if (input.length() <= 16) {
@@ -436,9 +441,29 @@ void lcdDisplay(String input) {
   lcd.clear();
 }
 
+// displays the given integer on the display
 void lcdDisplay(int input) {
   lcd.home();
   lcd.print(input);
   delay(2000);
   lcd.clear();
+}
+
+// writes integer to the slave device
+void sendInt(int input) {
+  byte buf[2];
+  buf[0] = input & 255;
+  buf[1] = (input >> 8)  & 255;
+  Serial.write(buf, sizeof(buf));
+}
+
+// writes string to the slave device
+void writeString(String stringData) { // Used to serially push out a String with Serial.write()
+
+  for (int i = 0; i < stringData.length(); i++)
+  {
+    //Serial.println(stringData[i]);
+    Serial.write(stringData[i]);   // Push each char 1 by 1 on each loop pass
+  }
+
 }
