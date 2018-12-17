@@ -1,3 +1,10 @@
+// EE 299 Lab 4
+// Feifan Qiao, Mitchell Szeto, Bert Zhao
+// This is the code for slave device. On receiving transmission from the master device,
+// the slave device spins the wheel and determins who much each guess is worth.
+// It also displays the amount of money each player have.
+// Last modified: 12/11/2018
+
 #include <LiquidCrystal.h>
 LiquidCrystal lcd(2, 3, 4, 5, 6, 7, 8); // bus 1
 
@@ -23,39 +30,14 @@ void setup() {
 
 void loop() {
   if (state == 0) {
-    // spin wheel
     state = readWheelInput();
   } else if (state == 1) {
-    // display wheel
-    lcd.clear();
     spinWheel(wheelVal, strength);
-    delay(1000);
-    state = 2;
-  } else if (state == 2) {
-    // Get player info and word
-    state = readWordAndInfo();
-  } else if (state == 3) {
-    // print hangman game and player info
-    lcd.clear();
-    printHangman(guessWord);
-    printInfo(player, score);
-
-    // checks if game is complete or not
-    if (hangmanFinished(guessWord)) {
-      state = 4;
-    } else {
-      state = 2;
-    }
-  } else if (state == 4) {
-    // Get end game info
-    state = readGameEnd();
-  } else if (state == 5) {
-    // Prints game over state
-    printEndGame(p1Total, p2Total);
-    state = 6;
+    state = 0;
   }
 }
 
+// receives and reads the wheel value strength from the master
 int readWheelInput() {
    if (Serial.available() == 4) { // 2 times 2 bytes
       wheelVal = readInt();
@@ -68,36 +50,14 @@ int readWheelInput() {
    }
 }
 
-int readWordAndInfo() {
-   if (Serial.available() == 4) {  // 2 times 2 bytes
-      player = readInt();
-      score  = readInt();
-   }
-    if (Serial.available()) {
-      guessWord += String((char)Serial.read());
-      return 3;
-   } else {
-      return 2;
-   }
-}
-
-int readGameEnd() {
-  if (Serial.available() == 4) {  // 2 times 2 bytes
-      p1Total = readInt();
-      p2Total = readInt();
-      return 5;
-   } else {
-      return 4;
-   }
-}
-
+// spins the wheel and displays it on the lcd
 void spinWheel(int num, int strength) {
   String number = String(num);
   String printStr = "";
   int i = 0;
   int count = 0;
   while (printStr.substring(0, number.length()) != number || strength > count) {
-    printStr = dispalyWheelPos(i);
+    printStr = displayWheelPos(i);
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print(printStr);
@@ -115,7 +75,8 @@ void spinWheel(int num, int strength) {
   noTone(BUZZER); 
 }
 
-String dispalyWheelPos(int num) {
+// shows the spinning of the wheel
+String displayWheelPos(int num) {
   if (num + SCREEN_LENGTH < wheelDisplay.length()) {
     return wheelDisplay.substring(num, num + SCREEN_LENGTH);
   } else {
@@ -123,37 +84,8 @@ String dispalyWheelPos(int num) {
   }
 }
 
-void printInfo(int player, int score) {
-  lcd.setCursor(0, 1);
-  lcd.print("P");
-  lcd.print(player);
-  lcd.print(": Score $");
-  lcd.print(score);
-}
-
-void printHangman(String str) {
-  lcd.setCursor(0, 0);
-  lcd.print(str));
-}
-
-bool hangmanFinished(String str) {
-  for (int i = 0; i < str.length(); i++) {
-    if (str.charAt(i) == "*") {
-      return false;
-    }
-  }
-  return true;
-}
-
-void printEndGame(int p1Total, int p2Total) {
-  lcd.setCursor(0, 0);
-  lcd.print("Player 1 won $");
-  lcd.print(p1Total);
-  lcd.setCursor(0, 1);
-  lcd.print("Player 2 won $");
-  lcd.print(p2Total);
-}
-
+// reads bytes from the master devices 
+// and converts them to integers
 int readInt() {
   byte b1 = Serial.read();
   byte b2 = Serial.read();
